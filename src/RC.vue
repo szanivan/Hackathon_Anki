@@ -19,6 +19,7 @@
 </template>
 <script>
 import axios from 'axios';
+import carController from './carController.js'
 export default {
   props:{
     car: 0
@@ -31,34 +32,30 @@ export default {
       lane: 0,
     }
   },
+  computed:{
+    carController(){return carController(this.car)}
+  },
   methods:{
     setSpeed(event){
       let command = "speed"
       this.log += ('\n set Speed to ' + this.speed);
-      sendCommand("setSpeed", this.car, this.speed);
+      this.carController.setSpeed(this.speed);
     },
     setStop(event){
       let command = "speed"
       this.speed = 0;
       this.log += ('\n set stop to ');
-      sendCommand("setSpeed", this.car, 0);
+      this.carController.setStop();
     },
     setTurn(event){
       this.log += ('\n u turn ');
-      sendCommand('uturn', this.car, '')
+      this.carController.setTurn();
     },
     setLane(event){
       this.log += ('\n set lane to ' + this.lane);
-      sendCommand('setLaneOffset', this.car, 0)
-      sendCommand('changeLanes', this.car, this.lane)
+      this.carController.setLane(this.lane);
     }
   }
-}
-
-function sendCommand(command, car, value){
-  let body = {}
-  console.log(body)
-  axios.post('http://localhost:7877/' + command + '/' + car + '/' + value)
 }
 </script>
 <style lang="scss">

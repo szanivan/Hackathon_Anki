@@ -1,36 +1,39 @@
 <template>
   <div id="app">
-    <div class="columns">
-      <div class="column" id="commands">
-        Commands
-
-        <div class="btn-group" >
-            <button v-on:click="forward">FORWARD</button>
-            <button v-on:click="backward">BACKWARD</button>
-            <button v-on:click="uturn">U-TURN</button>
-            <button v-on:click="halt">HALT</button>
+    <div class="container">
+    <h1 class="title is-1">Baron</h1>
+      <div class="columns">
+        <div class="column">
+          <h3 class="title is-3">Commands</h3>
+          <div class="card">
+            <div class="card-content">
+              <div class="block">
+                <button class="button" id="start_cmd" v-on:click="start">Start<i class="play"></i></button>
+                <button class="button" id="stop_cmd" v-on:click="stop">Stop</button>
+                <button class="button" id="clear" v-on:click="clear">Clear</button>
+              </div>
+              <p>Select commands</p>
+              <div class="block">
+                <button class="button" v-on:click="forward">Go</button>
+                <button class="button" v-on:click="backward">Stop</button>
+                <button class="button" v-on:click="uturn">Lane</button>
+                <button class="button" v-on:click="halt">Light</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column is-three-quarters">
+          <h3 class="title is-3">Tracks</h3>
+          <timeline v-for="(car, key) in cars" :track="car.track" :name="car.name" :car-id="key"> </timeline>
+          
         </div>
       </div>
-      <div class="column is-two-thirds" id="tracks">
-        Track
-            <ul id="track1">
-                <li v-for="step in track">
-                  {{ step.direction }}
-                </li>
-            </ul>
-      </div>
-      <div class="column" id="actions">
-            <button id="start_cmd" v-on:click="start">Start</button>
-            <button id="stop_cmd" v-on:click="stop">Stop</button>
-            <button id="clear" v-on:click="clear">Clear</button>
-      </div>
     </div>
-    <div class="columns">
-      <div class="column">
-        <remote-control car="f6:c8:09:8a:81:2a"></remote-control>
-      </div>
-      <div class="column is-half">
-        <remote-control car="e9:e6:2d:94:da:64"></remote-control>
+    <div class="container">
+      <div class="columns" v-if="false">
+        <div class="column" v-for="car in cars">
+          <remote-control :car="car.mac"></remote-control>
+        </div>
       </div>
     </div>
   </div>
@@ -39,21 +42,33 @@
 <script>
 
 import remoteControl from './RC.vue'
+import track from './Track.vue'
+import selectedCar from './selectedCarService.js'
+import carController from './carController.js'
 
 export default {
   name: 'app',
   data() {
     return {
-      track: []
+      cars: [
+        {mac: "f6:c8:09:8a:81:2a", name: "Blue Car" , track: []},
+        {mac: "e9:e6:2d:94:da:64", name: "Black Car", track: []},
+      ],
     }
   },
   components:{
     remoteControl: remoteControl,
+    timeline: track
   },
   methods: {
+    selectedCar(){return selectedCar.get()},
+    track(){return this.cars[this.selectedCar()].track},
     start: function (event) {
       //Start Anki car
-      collect_commands(this.track)
+      this.cars.map(car => {
+        let controller = carController(car.mac)
+        this.collect_commands(car.track, controller)
+      })
     },
     stop: function (event) {
       //Stop Anki car
@@ -61,37 +76,43 @@ export default {
     },
     clear: function (event) {
       //clear track
-      this.track = [];
+      while(this.track().length > 0) this.track().pop();
     },
     forward:function (event) {
-      this.track.push({direction: 'forward', duration: 1000});
+      this.track().push({direction: 'go', duration: 1000});
     },
     backward: function (event) {
-      this.track.push({direction: 'backward', duration: 1000});
+      this.track().push({direction: 'stop', duration: 1000});
     },
     uturn: function (event) {
-      this.track.push({direction: 'uturn', duration: 1000});
+      this.track().push({direction: 'lane', duration: 1000});
     },
     halt: function (event) {
-      this.track.push({direction: 'halt', duration: 1000});
+      this.track().push({direction: 'light', duration: 1000});
+    },
+    collect_commands (track, controller) {
+        var promise = Promise.resolve();
+        track.map(step => {
+            promise = promise.then( _ =>{
+                console.log(step.direction);
+                step.active = true;
+                switch(step.direction){
+                  case "go": controller.setSpeed(step.value); break;
+                  case "stop": controller.setStop(step.value); break;
+                  case "lane": controller.setLane(step.value); break;
+                  // case "light": controller.setLight', step.value); break;
+                }
+                return new Promise(function(resolve, reject) {
+                  setTimeout(function(){
+                      step.active = false;
+                      resolve()},
+                    step.duration)})
+            })
+        })
+        return promise;
     }
   }
 }
-
-function collect_commands (track) {
-    var promise = Promise.resolve();
-    track.map(step => {
-        promise = promise.then( _ =>
-            new Promise(function(resolve, reject) {
-              setTimeout(function(){
-                  console.log(step.direction);
-                  resolve()},
-                step.duration)})
-        )
-    })
-    return promise;
-}
-
 
 </script>
 
